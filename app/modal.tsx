@@ -7,9 +7,13 @@ import { ThemedView } from '@/components/themed-view';
 export default function ModalScreen() {
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
+      <ThemedText type="title">Aviso</ThemedText>
+      <ThemedText style={styles.message}>
+        Esta é uma tela modal genérica do aplicativo. Você pode usá-la para exibir avisos ou
+        informações rápidas para o usuário.
+      </ThemedText>
+      <Link href="/" style={styles.link}>
+        <ThemedText type="link">Fechar</ThemedText>
       </Link>
     </ThemedView>
   );
@@ -21,6 +25,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+  },
+  message: {
+    marginTop: 12,
+    textAlign: 'center',
   },
   link: {
     marginTop: 15,

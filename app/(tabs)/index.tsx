@@ -1,98 +1,479 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { Calendar } from 'react-native-calendars';
+import { useRouter } from 'expo-router';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { auth, db } from '@/firebaseConfig';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 
-export default function HomeScreen() {
+type TaskLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  timestamp?: number;
+};
+
+type Task = {
+  id: string;
+  clientName: string;
+  description: string;
+  date: string;
+  status: 'pending' | 'done';
+  location?: TaskLocation;
+};
+
+function formatDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDateLabel(date: Date) {
+  return date.toLocaleDateString('pt-BR');
+}
+
+function formatCoordinate(value: number, decimals = 4) {
+  if (!Number.isFinite(value)) {
+    return String(value);
+  }
+  return value.toFixed(decimals);
+}
+
+export default function TasksScreen() {
+  const router = useRouter();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [markedDates, setMarkedDates] = useState<Record<string, any>>({});
+  const user = auth.currentUser;
+  const userEmail = user?.email ?? '';
+
+  useEffect(() => {
+    if (!user) {
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
+
+    const dateKey = formatDateKey(selectedDate);
+    const tasksRef = collection(db, 'tasks');
+    const q = query(tasksRef, where('userId', '==', user.uid), where('date', '==', dateKey));
+
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const data: Task[] = snapshot.docs.map((doc: any) => {
+        const d = doc.data() as any;
+        return {
+          id: doc.id,
+          clientName: d.clientName,
+          description: d.description,
+          date: d.date,
+          status: d.status ?? 'pending',
+          location: d.location,
+        };
+      });
+      setTasks(data);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!user) {
+      setMarkedDates({});
+      return;
+    }
+
+    const tasksRef = collection(db, 'tasks');
+    const q = query(tasksRef, where('userId', '==', user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot: any) => {
+      const marks: Record<string, any> = {};
+      snapshot.docs.forEach((doc: any) => {
+        const d = doc.data() as any;
+        if (d.date) {
+          marks[d.date] = {
+            ...(marks[d.date] ?? {}),
+            marked: true,
+            dotColor: '#9ca3af',
+          };
+        }
+      });
+      setMarkedDates(marks);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Erro', error?.message ?? 'Não foi possível sair.');
+    }
+  };
+
+  const handleSelectDate = (day: { dateString: string }) => {
+    const [year, month, dayOfMonth] = day.dateString.split('-').map(Number);
+    const nextDate = new Date(year, month - 1, dayOfMonth);
+    setLoading(true);
+    setSelectedDate(nextDate);
+    setShowCalendar(false);
+  };
+
+  const handleOpenCalendar = () => {
+    setShowCalendar(true);
+  };
+
+  const handleCloseCalendar = () => {
+    setShowCalendar(false);
+  };
+
+  const handleNewTask = () => {
+    router.push({ pathname: '/task/new' });
+  };
+
+  const totalTasks = tasks.length;
+  const doneCount = tasks.filter((task) => task.status === 'done').length;
+  const pendingCount = totalTasks - doneCount;
+
+  const renderTask = ({ item }: { item: Task }) => {
+    const isDone = item.status === 'done';
+    const hasLocation =
+      !!item.location &&
+      typeof item.location.latitude === 'number' &&
+      typeof item.location.longitude === 'number';
+
+    return (
+      <TouchableOpacity
+        style={styles.taskCard}
+        onPress={() =>
+          router.push({
+            pathname: '/task/[id]',
+            params: { id: item.id },
+          })
+        }
+      >
+        <View style={styles.taskHeaderRow}>
+          <ThemedText type="defaultSemiBold" style={styles.taskClientName}>
+            {item.clientName}
+          </ThemedText>
+          <View
+            style={[
+              styles.statusBadge,
+              isDone ? styles.statusBadgeDone : styles.statusBadgePending,
+            ]}
+          >
+            <ThemedText style={styles.statusBadgeText}>
+              {isDone ? 'Concluída' : 'Pendente'}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText style={styles.taskDescription} numberOfLines={2}>
+          {item.description}
+        </ThemedText>
+        {hasLocation && (
+          <ThemedText style={styles.taskLocation}>
+            {`Lat: ${formatCoordinate(item.location!.latitude)}, Lon: ${formatCoordinate(
+              item.location!.longitude,
+            )}`}
+          </ThemedText>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTextContainer}>
+          <ThemedText type="title" style={styles.headerTitle}>
+            Tarefas
+          </ThemedText>
+          <ThemedText style={styles.headerSubtitle}>
+            {userEmail ? `Olá, ${userEmail}` : 'Usuário não identificado'}
+          </ThemedText>
+        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <ThemedText type="defaultSemiBold" style={styles.logoutButtonText}>
+            Sair
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+      <View style={styles.section}>
+        <View style={styles.dateRow}>
+          <View>
+            <ThemedText style={styles.sectionLabel}>Data da rota</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.dateValue}>
+              {formatDateLabel(selectedDate)}
+            </ThemedText>
+          </View>
+          <TouchableOpacity style={styles.calendarButton} onPress={handleOpenCalendar}>
+            <ThemedText type="defaultSemiBold" style={styles.calendarButtonText}>
+              Selecionar data
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryCard}>
+            <ThemedText style={styles.summaryLabel}>Total</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.summaryValue}>
+              {totalTasks}
+            </ThemedText>
+          </View>
+          <View style={styles.summaryCard}>
+            <ThemedText style={styles.summaryLabel}>Pendentes</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.summaryValue}>
+              {pendingCount}
+            </ThemedText>
+          </View>
+          <View style={styles.summaryCard}>
+            <ThemedText style={styles.summaryLabel}>Concluídas</ThemedText>
+            <ThemedText type="defaultSemiBold" style={styles.summaryValue}>
+              {doneCount}
+            </ThemedText>
+          </View>
+        </View>
+      </View>
+
+      <Modal transparent visible={showCalendar} animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <ThemedText type="subtitle" style={styles.modalTitle}>
+              Selecione a data
+            </ThemedText>
+            <Calendar
+              current={formatDateKey(selectedDate)}
+              markedDates={{
+                ...markedDates,
+                [formatDateKey(selectedDate)]: {
+                  ...(markedDates[formatDateKey(selectedDate)] ?? {}),
+                  selected: true,
+                  selectedColor: '#3b82f6',
+                },
+              }}
+              onDayPress={handleSelectDate}
+            />
+            <TouchableOpacity style={styles.modalCloseButton} onPress={handleCloseCalendar}>
+              <ThemedText type="defaultSemiBold" style={styles.modalCloseButtonText}>
+                Fechar
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <View style={styles.listHeader}>
+        <ThemedText type="subtitle" style={styles.listTitle}>
+          Tarefas
         </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        <TouchableOpacity style={styles.newTaskButton} onPress={handleNewTask}>
+          <ThemedText type="defaultSemiBold" style={styles.newTaskButtonText}>
+            Nova Tarefa
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+        </View>
+      ) : tasks.length === 0 ? (
+        <View style={styles.centered}>
+          <ThemedText>Nenhuma tarefa para esta data.</ThemedText>
+        </View>
+      ) : (
+        <FlatList
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTask}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#ffffff',
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  stepContainer: {
-    gap: 8,
+  headerTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  headerTitle: {
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    color: '#6b7280',
+  },
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#ef4444',
+  },
+  logoutButtonText: {
+    color: '#fff',
+  },
+  section: {
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#f9fafb',
+  },
+  sectionLabel: {
+    marginBottom: 4,
+    color: '#6b7280',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateValue: {
+    marginTop: 2,
+  },
+  summaryRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  summaryCard: {
+    flex: 1,
+    marginHorizontal: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 16,
+  },
+  listHeader: {
+    marginTop: 4,
     marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  listTitle: {
+    fontSize: 18,
+  },
+  newTaskButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#0a7ea4',
+  },
+  newTaskButtonText: {
+    color: '#fff',
+  },
+  listContent: {
+    paddingBottom: 24,
+    gap: 8,
+  },
+  calendarButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#0a7ea4',
+  },
+  calendarButtonText: {
+    color: '#fff',
+  },
+  taskCard: {
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 4,
+  },
+  taskHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  taskClientName: {
+    flex: 1,
+    marginRight: 8,
+  },
+  taskDescription: {
+    color: '#4b5563',
+    marginTop: 2,
+  },
+  taskLocation: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  statusBadgePending: {
+    backgroundColor: '#fef3c7',
+  },
+  statusBadgeDone: {
+    backgroundColor: '#dcfce7',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    color: '#111827',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: 'white',
+  },
+  modalTitle: {
+    marginBottom: 12,
+  },
+  modalCloseButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#6b7280',
+  },
+  modalCloseButtonText: {
+    color: '#fff',
   },
 });
