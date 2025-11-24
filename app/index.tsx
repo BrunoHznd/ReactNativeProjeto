@@ -1,11 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, StyleSheet, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { Redirect } from 'expo-router';
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInWithEmailAndPassword, type User } from 'firebase/auth';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { auth } from '@/firebaseConfig';
+
+const FRASES_DESTAQUE = [
+  'Gerencie a Sua Equipe de Campo',
+  'Controle De Tarefas',
+  'Criação de Tarefas',
+  'Relatórios com Fotos e Assinaturas',
+  'Tudo em um Único Aplicativo',
+];
 
 export default function TelaAutenticacao() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -14,6 +22,9 @@ export default function TelaAutenticacao() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [textoDigitado, setTextoDigitado] = useState('');
+  const [indiceFrase, setIndiceFrase] = useState(0);
+  const [faseDigitacao, setFaseDigitacao] = useState<'digitando' | 'apagando'>('digitando');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: User | null) => {
@@ -23,6 +34,36 @@ export default function TelaAutenticacao() {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    const fraseAtual = FRASES_DESTAQUE[indiceFrase];
+    let timeout: ReturnType<typeof setTimeout>;
+
+    if (faseDigitacao === 'digitando') {
+      if (textoDigitado.length < fraseAtual.length) {
+        timeout = setTimeout(() => {
+          setTextoDigitado(fraseAtual.slice(0, textoDigitado.length + 1));
+        }, 80);
+      } else {
+        timeout = setTimeout(() => {
+          setFaseDigitacao('apagando');
+        }, 1000);
+      }
+    } else {
+      if (textoDigitado.length > 0) {
+        timeout = setTimeout(() => {
+          setTextoDigitado(fraseAtual.slice(0, textoDigitado.length - 1));
+        }, 40);
+      } else {
+        timeout = setTimeout(() => {
+          setIndiceFrase((prev) => (prev + 1) % FRASES_DESTAQUE.length);
+          setFaseDigitacao('digitando');
+        }, 300);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [textoDigitado, faseDigitacao, indiceFrase]);
 
   const handleAutenticacao = async () => {
     if (!email || !password) {
@@ -59,11 +100,16 @@ export default function TelaAutenticacao() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.brandContainer}>
+        <Image
+          source={require('../media/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <ThemedText type="title" style={styles.appTitle}>
           Controle de Tarefas de Equipe de Campo
         </ThemedText>
         <ThemedText style={styles.appSubtitle}>
-          Gerencie as visitas e atividades da sua equipe de campo.
+          {textoDigitado || 'Gerencie as visitas e atividades da sua equipe de campo.'}
         </ThemedText>
       </View>
 
@@ -134,6 +180,12 @@ const styles = StyleSheet.create({
   },
   brandContainer: {
     marginBottom: 24,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   appTitle: {
     textAlign: 'center',
