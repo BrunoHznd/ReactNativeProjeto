@@ -9,7 +9,7 @@ import * as Calendar from 'expo-calendar';
 import { auth, db } from '@/firebaseConfig';
 import { addDoc, collection } from 'firebase/firestore';
 
-export default function NewTaskScreen() {
+export default function TelaNovaTarefa() {
   const router = useRouter();
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
@@ -20,7 +20,7 @@ export default function NewTaskScreen() {
     return <Redirect href="/" />;
   }
 
-  const handleCreateTask = async () => {
+  const handleCriarTarefa = async () => {
     const user = auth.currentUser;
     if (!user) {
       Alert.alert('Atenção', 'Usuário não autenticado.');
@@ -91,6 +91,10 @@ export default function NewTaskScreen() {
     }
   };
 
+  const handleCancelar = () => {
+    router.back();
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title" style={styles.title}>
@@ -120,7 +124,7 @@ export default function NewTaskScreen() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleCreateTask} disabled={saving}>
+      <TouchableOpacity style={styles.button} onPress={handleCriarTarefa} disabled={saving}>
         {saving ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -128,6 +132,12 @@ export default function NewTaskScreen() {
             Criar tarefa
           </ThemedText>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.cancelButton} onPress={handleCancelar} disabled={saving}>
+        <ThemedText type="defaultSemiBold" style={styles.cancelButtonText}>
+          Cancelar
+        </ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );
@@ -182,6 +192,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a7ea4',
   },
   buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  cancelButton: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    backgroundColor: '#6b7280',
+  },
+  cancelButtonText: {
     color: '#fff',
     fontWeight: '600',
   },

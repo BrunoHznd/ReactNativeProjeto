@@ -9,41 +9,41 @@ import { auth, db } from '@/firebaseConfig';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
-type TaskLocation = {
+type LocalTarefa = {
   latitude: number;
   longitude: number;
   accuracy?: number;
   timestamp?: number;
 };
 
-type Task = {
+type Tarefa = {
   id: string;
   clientName: string;
   description: string;
   date: string;
   status: 'pending' | 'done';
-  location?: TaskLocation;
+  location?: LocalTarefa;
 };
 
-function formatDateKey(date: Date) {
+function formatarChaveData(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function formatDateLabel(date: Date) {
+function formatarRotuloData(date: Date) {
   return date.toLocaleDateString('pt-BR');
 }
 
-function formatCoordinate(value: number, decimals = 4) {
+function formatarCoordenada(value: number, decimals = 4) {
   if (!Number.isFinite(value)) {
     return String(value);
   }
   return value.toFixed(decimals);
 }
 
-export default function TasksScreen() {
+export default function TelaTarefas() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Tarefa[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCalendar, setShowCalendar] = useState(false);
   const [markedDates, setMarkedDates] = useState<Record<string, any>>({});
@@ -57,12 +57,12 @@ export default function TasksScreen() {
       return;
     }
 
-    const dateKey = formatDateKey(selectedDate);
+    const dateKey = formatarChaveData(selectedDate);
     const tasksRef = collection(db, 'tasks');
     const q = query(tasksRef, where('userId', '==', user.uid), where('date', '==', dateKey));
 
     const unsubscribe = onSnapshot(q, (snapshot: any) => {
-      const data: Task[] = snapshot.docs.map((doc: any) => {
+      const data: Tarefa[] = snapshot.docs.map((doc: any) => {
         const d = doc.data() as any;
         return {
           id: doc.id,
@@ -107,7 +107,7 @@ export default function TasksScreen() {
     return unsubscribe;
   }, []);
 
-  const handleLogout = async () => {
+  const handleSair = async () => {
     try {
       await signOut(auth);
       router.replace('/');
@@ -116,7 +116,7 @@ export default function TasksScreen() {
     }
   };
 
-  const handleSelectDate = (day: { dateString: string }) => {
+  const handleSelecionarData = (day: { dateString: string }) => {
     const [year, month, dayOfMonth] = day.dateString.split('-').map(Number);
     const nextDate = new Date(year, month - 1, dayOfMonth);
     setLoading(true);
@@ -124,15 +124,15 @@ export default function TasksScreen() {
     setShowCalendar(false);
   };
 
-  const handleOpenCalendar = () => {
+  const handleAbrirCalendario = () => {
     setShowCalendar(true);
   };
 
-  const handleCloseCalendar = () => {
+  const handleFecharCalendario = () => {
     setShowCalendar(false);
   };
 
-  const handleNewTask = () => {
+  const handleNovaTarefa = () => {
     router.push({ pathname: '/task/new' });
   };
 
@@ -140,7 +140,7 @@ export default function TasksScreen() {
   const doneCount = tasks.filter((task) => task.status === 'done').length;
   const pendingCount = totalTasks - doneCount;
 
-  const renderTask = ({ item }: { item: Task }) => {
+  const renderizarTarefa = ({ item }: { item: Tarefa }) => {
     const isDone = item.status === 'done';
     const hasLocation =
       !!item.location &&
@@ -177,7 +177,7 @@ export default function TasksScreen() {
         </ThemedText>
         {hasLocation && (
           <ThemedText style={styles.taskLocation}>
-            {`Lat: ${formatCoordinate(item.location!.latitude)}, Lon: ${formatCoordinate(
+            {`Lat: ${formatarCoordenada(item.location!.latitude)}, Lon: ${formatarCoordenada(
               item.location!.longitude,
             )}`}
           </ThemedText>
@@ -197,9 +197,9 @@ export default function TasksScreen() {
             {userEmail ? `Olá, ${userEmail}` : 'Usuário não identificado'}
           </ThemedText>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSair}>
           <ThemedText type="defaultSemiBold" style={styles.logoutButtonText}>
-            Sair
+            Menu
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -209,10 +209,10 @@ export default function TasksScreen() {
           <View>
             <ThemedText style={styles.sectionLabel}>Data da rota</ThemedText>
             <ThemedText type="defaultSemiBold" style={styles.dateValue}>
-              {formatDateLabel(selectedDate)}
+              {formatarRotuloData(selectedDate)}
             </ThemedText>
           </View>
-          <TouchableOpacity style={styles.calendarButton} onPress={handleOpenCalendar}>
+          <TouchableOpacity style={styles.calendarButton} onPress={handleAbrirCalendario}>
             <ThemedText type="defaultSemiBold" style={styles.calendarButtonText}>
               Selecionar data
             </ThemedText>
@@ -248,18 +248,18 @@ export default function TasksScreen() {
               Selecione a data
             </ThemedText>
             <Calendar
-              current={formatDateKey(selectedDate)}
+              current={formatarChaveData(selectedDate)}
               markedDates={{
                 ...markedDates,
-                [formatDateKey(selectedDate)]: {
-                  ...(markedDates[formatDateKey(selectedDate)] ?? {}),
+                [formatarChaveData(selectedDate)]: {
+                  ...(markedDates[formatarChaveData(selectedDate)] ?? {}),
                   selected: true,
                   selectedColor: '#3b82f6',
                 },
               }}
-              onDayPress={handleSelectDate}
+              onDayPress={handleSelecionarData}
             />
-            <TouchableOpacity style={styles.modalCloseButton} onPress={handleCloseCalendar}>
+            <TouchableOpacity style={styles.modalCloseButton} onPress={handleFecharCalendario}>
               <ThemedText type="defaultSemiBold" style={styles.modalCloseButtonText}>
                 Fechar
               </ThemedText>
@@ -272,7 +272,7 @@ export default function TasksScreen() {
         <ThemedText type="subtitle" style={styles.listTitle}>
           Tarefas
         </ThemedText>
-        <TouchableOpacity style={styles.newTaskButton} onPress={handleNewTask}>
+        <TouchableOpacity style={styles.newTaskButton} onPress={handleNovaTarefa}>
           <ThemedText type="defaultSemiBold" style={styles.newTaskButtonText}>
             Nova Tarefa
           </ThemedText>
@@ -291,7 +291,7 @@ export default function TasksScreen() {
         <FlatList
           data={tasks}
           keyExtractor={(item) => item.id}
-          renderItem={renderTask}
+          renderItem={renderizarTarefa}
           contentContainerStyle={styles.listContent}
         />
       )}

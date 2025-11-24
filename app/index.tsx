@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { auth } from '@/firebaseConfig';
 
-export default function AuthScreen() {
+export default function TelaAutenticacao() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +24,7 @@ export default function AuthScreen() {
     return unsubscribe;
   }, []);
 
-  const handleAuth = async () => {
+  const handleAutenticacao = async () => {
     if (!email || !password) {
       Alert.alert('Atenção', 'Preencha e-mail e senha.');
       return;
@@ -92,7 +92,7 @@ export default function AuthScreen() {
             placeholder="Senha"
           />
 
-          <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={submitting}>
+          <TouchableOpacity style={styles.button} onPress={handleAutenticacao} disabled={submitting}>
             {submitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
