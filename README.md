@@ -1,3 +1,4 @@
+
 # Welcome to your Expo app 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
@@ -16,35 +17,49 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+   Depois, escolha rodar em:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   - Expo Go (leia o QR Code)
+   - Emulador Android / iOS
+   - Navegador Web
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## Funcionalidades principais
 
-When you're ready, run:
+- **Login / Cadastro** com Firebase Authentication.
+- **Criação de tarefas** por data, com nome do cliente e descrição do serviço.
+- **Menu principal** com visão de tarefas pendentes e concluídas.
+- **Registro de localização** (geolocalização) na criação da tarefa.
+- **Detalhe da tarefa** com:
+  - campo "o que foi feito";
+  - fotos da execução (câmera ou galeria), armazenadas como base64;
+  - assinaturas do técnico e do cliente desenhadas na tela.
+- **Geração de relatório em PDF**, incluindo:
+  - dados da tarefa;
+  - descrição do serviço;
+  - fotos com data, hora e localização;
+  - assinaturas em formato gráfico.
+- **Compartilhamento do PDF** (por exemplo, via WhatsApp).
 
-```bash
-npm run reset-project
-```
+---
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Tecnologias
 
-## Learn more
+- **Expo / React Native**
+- **Expo Router** para navegação
+- **Firebase Authentication** para login/cadastro
+- **Cloud Firestore** para armazenamento das tarefas
+- **expo-location** para GPS
+- **expo-image-picker** / **expo-image** para fotos
+- **expo-print** + **expo-sharing** para geração e envio de PDF
+- **expo-calendar** para criação opcional de evento no calendário do dispositivo
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Scripts úteis
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `npm start` ou `npx expo start` – inicia o servidor de desenvolvimento.
+- `npm run android` – inicia no emulador/dispositivo Android.
+- `npm run ios` – inicia no simulador iOS (em macOS).
+- `npm run web` – roda no navegador.
