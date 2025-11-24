@@ -9,6 +9,8 @@ firebaseConfig.ts
 .expo/
 dist/
 web-build/
+firebase-debug.log
+
 expo-env.d.ts
 
 # Native
